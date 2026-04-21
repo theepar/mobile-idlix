@@ -12,6 +12,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -61,7 +67,7 @@ fun ProfileScreen() {
                         .clickable { },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("✎", color = Color.White) // Placeholder icon edit
+                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Profile", tint = Color.White, modifier = Modifier.size(20.dp))
                 }
             }
             
@@ -76,7 +82,7 @@ fun ProfileScreen() {
                     .padding(horizontal = 16.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("★", color = IdlixRed, fontSize = 16.sp)
+                Icon(imageVector = Icons.Default.Star, contentDescription = "Premium", tint = IdlixRed, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("PREMIUM MEMBER", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
             }
@@ -108,7 +114,7 @@ fun ProfileScreen() {
                         .background(DarkSurface),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("L", color = Color.Red)
+                    Icon(imageVector = Icons.Default.ExitToApp, contentDescription = "Logout", tint = Color.Red, modifier = Modifier.size(24.dp))
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Text("Logout", fontSize = 16.sp, color = Color.Red)
@@ -138,7 +144,7 @@ fun SettingsItem(title: String, subtitle: String? = null) {
                     .background(DarkSurface),
                 contentAlignment = Alignment.Center
             ) {
-                Text("⚙", color = Color.Gray)
+                Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings", tint = Color.Gray, modifier = Modifier.size(20.dp))
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
@@ -148,6 +154,6 @@ fun SettingsItem(title: String, subtitle: String? = null) {
                 }
             }
         }
-        Text(">", color = Color.Gray, fontSize = 20.sp)
+        Icon(imageVector = Icons.Default.KeyboardArrowRight, contentDescription = "Arrow Right", tint = Color.Gray)
     }
 }

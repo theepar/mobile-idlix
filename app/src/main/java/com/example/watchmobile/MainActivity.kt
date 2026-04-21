@@ -3,11 +3,18 @@ package com.example.watchmobile
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -49,10 +56,11 @@ fun WatchMobileApp() {
             }
             
             composable("discover") {
-                // Placeholder for discover
-                Box(modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                    androidx.compose.material3.Text("Discover Coming Soon", color = androidx.compose.ui.graphics.Color.White)
-                }
+                DiscoverScreen(
+                    onMovieClick = { slug ->
+                        navController.navigate("detail/$slug")
+                    }
+                )
             }
 
             composable("downloads") {

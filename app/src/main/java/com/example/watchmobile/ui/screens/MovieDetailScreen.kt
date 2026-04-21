@@ -11,6 +11,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import android.net.Uri
+import android.widget.Toast
+import androidx.media3.exoplayer.offline.DownloadRequest
+import androidx.media3.exoplayer.offline.DownloadService
+import com.example.watchmobile.services.DemoDownloadService
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +48,9 @@ fun MovieDetailScreen(
 
     val detail by viewModel.movieDetail.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    
+    var showResolutionDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     if (isLoading) {
         Box(modifier = Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
@@ -137,12 +149,54 @@ fun MovieDetailScreen(
             
             // Download Button
             OutlinedButton(
-                onClick = { /* TODO: Download Manager Trigger */ },
+                onClick = { showResolutionDialog = true },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text("↓ Download", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            
+            if (showResolutionDialog) {
+                AlertDialog(
+                    onDismissRequest = { showResolutionDialog = false },
+                    title = { Text("Select Resolution") },
+                    text = {
+                        Column {
+                            listOf("1080p (FHD)", "720p (HD)", "480p (SD)", "360p (Low)").forEach { res ->
+                                TextButton(
+                                    onClick = {
+                                        showResolutionDialog = false
+                                        val url = movie.embedUrl ?: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+                                        val downloadRequest = DownloadRequest.Builder(movie.id, Uri.parse(url))
+                                            .setCustomCacheKey(movie.id + "_" + res)
+                                            .setData(movie.title.toByteArray())
+                                            .build()
+                                            
+                                        DownloadService.sendAddDownload(
+                                            context,
+                                            DemoDownloadService::class.java,
+                                            downloadRequest,
+                                            true
+                                        )
+                                        Toast.makeText(context, "Download queued: $res", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(res, color = Color.White)
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showResolutionDialog = false }) {
+                            Text("Cancel", color = IdlixRed)
+                        }
+                    },
+                    containerColor = DarkSurface,
+                    titleContentColor = Color.White,
+                    textContentColor = Color.White
+                )
             }
             
             Spacer(modifier = Modifier.height(24.dp))

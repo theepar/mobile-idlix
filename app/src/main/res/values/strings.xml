@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">IDXM</string>
+    <string name="exo_download_notification_channel_name">Downloads</string>
 </resources>

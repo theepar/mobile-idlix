@@ -50,7 +50,7 @@ android {
         buildConfig = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.4"
+        kotlinCompilerExtensionVersion = "1.5.13"
     }
     packaging {
         resources {
@@ -68,6 +68,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
 
     // Networking
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
@@ -76,10 +77,12 @@ dependencies {
     // HTML Parsing
     implementation("org.jsoup:jsoup:1.16.1")
 
-    // Video Player
-    implementation("androidx.media3:media3-exoplayer:1.2.0")
-    implementation("androidx.media3:media3-exoplayer-hls:1.2.0")
-    implementation("androidx.media3:media3-ui:1.2.0")
+    // Video Player (Media3)
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.3.1")
+    implementation("androidx.media3:media3-ui:1.3.1")
+    implementation("androidx.media3:media3-database:1.3.1")
+    implementation("androidx.media3:media3-datasource:1.3.1")
 
     // Navigation & Image Loading
     implementation("androidx.navigation:navigation-compose:2.7.5")

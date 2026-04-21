@@ -8,6 +8,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -48,7 +52,7 @@ fun HomeScreen(
                 ),
                 actions = {
                     IconButton(onClick = { /* TODO: Search */ }) {
-                        Text("⌕", color = Color.White, fontSize = 24.sp)
+                        Icon(imageVector = Icons.Default.Search, contentDescription = "Search", tint = Color.White)
                     }
                 },
                 modifier = Modifier.background(
@@ -63,6 +67,7 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(paddingValues)
         ) {
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = IdlixRed)
@@ -130,14 +135,18 @@ fun HomeScreen(
                                     colors = ButtonDefaults.buttonColors(containerColor = IdlixRed),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Text("▶ Play", fontWeight = FontWeight.Bold)
+                                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Play")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Play", fontWeight = FontWeight.Bold)
                                 }
                                 OutlinedButton(
                                     onClick = { /* TODO */ },
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Text("+ My List")
+                                    Icon(imageVector = Icons.Default.Add, contentDescription = "My List")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("My List")
                                 }
                             }
                         }
