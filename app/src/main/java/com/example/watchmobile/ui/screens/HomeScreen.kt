@@ -1,5 +1,6 @@
 package com.example.watchmobile.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -106,9 +107,22 @@ fun MovieCard(movie: Movie, onClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(text = movie.year, fontSize = 12.sp, color = Color.Gray)
+                    if (!movie.quality.isNullOrEmpty()) {
+                        Text(
+                            text = movie.quality,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.primary)
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                    }
                     Text(text = "⭐ ${movie.voteAverage ?: "-"}", fontSize = 12.sp, color = Color(0xFFFFA000))
                 }
             }

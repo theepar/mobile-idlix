@@ -47,7 +47,7 @@ fun WatchMobileApp() {
                     val dummyVideo = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
                     // Mengenkode URL agar aman dikirim sebagai argumen navigasi
                     val encodedUrl = java.net.URLEncoder.encode(dummyVideo, "UTF-8")
-                    navController.navigate("player/\$encodedUrl")
+                    navController.navigate("player/$encodedUrl")
                 }
             )
         }
