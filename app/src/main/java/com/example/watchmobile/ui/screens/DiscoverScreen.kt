@@ -15,21 +15,49 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.watchmobile.domain.models.Movie
 import com.example.watchmobile.ui.theme.DarkSurface
 import com.example.watchmobile.ui.theme.IdlixRed
+import com.example.watchmobile.ui.viewmodels.HomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiscoverScreen(
-    onMovieClick: (String) -> Unit
+    onMovieClick: (String) -> Unit,
+    viewModel: HomeViewModel = viewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    val categories = listOf("All", "Action", "Drama", "Sci-Fi", "Horror", "Comedy", "Thriller")
-    var selectedCategory by remember { mutableStateOf("All") }
+    val movies by viewModel.movies.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMsg by viewModel.error.collectAsState()
+
+    val categories = remember(movies) {
+        listOf("All") + movies
+            .mapNotNull { it.contentType }
+            .map { it.replaceFirstChar { c -> c.uppercase() } }
+            .distinct()
+    }
+    var selectedCategory by remember(categories) { mutableStateOf("All") }
+
+    val filteredMovies = remember(movies, searchQuery, selectedCategory) {
+        movies.filter { movie ->
+            val queryOk = searchQuery.isBlank() ||
+                movie.title.contains(searchQuery, ignoreCase = true)
+            val categoryOk = selectedCategory == "All" ||
+                movie.contentType?.equals(selectedCategory, ignoreCase = true) == true
+            queryOk && categoryOk
+        }
+    }
+
+    val featuredMovies = filteredMovies.take(10)
+    val recommendedMovies = filteredMovies.drop(10)
 
     Scaffold(
         topBar = {
@@ -93,77 +121,155 @@ fun DiscoverScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Scrollable Content
-            LazyColumn(
-                contentPadding = PaddingValues(bottom = 100.dp) // Padding for BottomNavBar
-            ) {
-                item {
-                    Text(
-                        text = "Top This Year",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+            when {
+                isLoading -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center),
+                            color = IdlixRed
+                        )
+                    }
                 }
 
-                item {
-                    // Top This Year Horizontal List
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                errorMsg != null -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        items(5) { // Placeholder items
-                            Box(
-                                modifier = Modifier
-                                    .width(140.dp)
-                                    .height(210.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(DarkSurface)
-                            )
+                        Text(text = errorMsg!!, color = MaterialTheme.colorScheme.error)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { viewModel.refreshMovies() },
+                            colors = ButtonDefaults.buttonColors(containerColor = IdlixRed)
+                        ) {
+                            Text("Coba Lagi")
                         }
                     }
-                    Spacer(modifier = Modifier.height(32.dp))
                 }
 
-                item {
-                    Text(
-                        text = "Recommended for You",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-
-                items(10) { // Placeholder vertical items
-                    Row(
+                filteredMovies.isEmpty() -> {
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, bottom = 16.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(DarkSurface)
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .width(80.dp)
-                                .height(112.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color.Gray)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text("Movie Title Placeholder", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("Action • 2024", color = Color.Gray, fontSize = 14.sp)
+                        Text("Data belum tersedia atau filter terlalu ketat.", color = Color.White)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { viewModel.refreshMovies() },
+                            colors = ButtonDefaults.buttonColors(containerColor = IdlixRed)
+                        ) {
+                            Text("Muat Ulang")
                         }
+                    }
+                }
+
+                else -> LazyColumn(
+                    contentPadding = PaddingValues(bottom = 100.dp)
+                ) {
+                    item {
+                        Text(
+                            text = "Top This Year",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    item {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(featuredMovies) { movie ->
+                                Box(
+                                    modifier = Modifier
+                                        .width(140.dp)
+                                        .height(210.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(DarkSurface)
+                                        .clickable { onMovieClick(movie.slug) }
+                                ) {
+                                    AsyncImage(
+                                        model = movie.fullPosterUrl,
+                                        contentDescription = movie.title,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(32.dp))
+                    }
+
+                    item {
+                        Text(
+                            text = "Recommended for You",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    items(if (recommendedMovies.isEmpty()) featuredMovies else recommendedMovies) { movie ->
+                        MovieListItem(
+                            movie = movie,
+                            onClick = { onMovieClick(movie.slug) }
+                        )
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MovieListItem(movie: Movie, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(DarkSurface)
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AsyncImage(
+            model = movie.fullPosterUrl,
+            contentDescription = movie.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .width(80.dp)
+                .height(112.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color.Gray)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column {
+            Text(
+                text = movie.title,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "${movie.contentType ?: "Movie"} • ${movie.year}",
+                color = Color.Gray,
+                fontSize = 14.sp
+            )
         }
     }
 }

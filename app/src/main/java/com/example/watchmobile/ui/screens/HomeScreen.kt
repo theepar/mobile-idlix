@@ -5,15 +5,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -37,10 +40,12 @@ import com.example.watchmobile.ui.viewmodels.HomeViewModel
 @Composable
 fun HomeScreen(
     onMovieClick: (String) -> Unit,
+    onSearchClick: () -> Unit,
     viewModel: HomeViewModel = viewModel()
 ) {
     val movies by viewModel.movies.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
     val errorMsg by viewModel.error.collectAsState()
 
     Scaffold(
@@ -51,7 +56,7 @@ fun HomeScreen(
                     containerColor = Color.Transparent
                 ),
                 actions = {
-                    IconButton(onClick = { /* TODO: Search */ }) {
+                    IconButton(onClick = onSearchClick) {
                         Icon(imageVector = Icons.Default.Search, contentDescription = "Search", tint = Color.White)
                     }
                 },
@@ -69,111 +74,180 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (isLoading) {
+            if (isLoading && movies.isEmpty()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = IdlixRed)
-            } else if (errorMsg != null) {
-                Text(
-                    text = errorMsg!!,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+            } else if (errorMsg != null && movies.isEmpty()) {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = errorMsg!!,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = { viewModel.refreshMovies() },
+                        colors = ButtonDefaults.buttonColors(containerColor = IdlixRed)
+                    ) {
+                        Text("Coba Lagi")
+                    }
+                }
             } else if (movies.isNotEmpty()) {
                 val heroMovie = movies.first()
-                val trendingMovies = movies.drop(1)
+                val trendingMovies = movies.drop(1).take(10)
+                val forYouMovies = movies.drop(11)
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(bottom = 100.dp),
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     // Hero Section
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(450.dp)
-                            .clickable { onMovieClick(heroMovie.slug) }
-                    ) {
-                        AsyncImage(
-                            model = heroMovie.fullPosterUrl,
-                            contentDescription = heroMovie.title,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                    item(span = { GridItemSpan(2) }) {
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color.Transparent, Color.Black),
-                                        startY = 200f
-                                    )
-                                )
-                        )
-                        Column(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .fillMaxWidth()
+                                .height(450.dp)
+                                .clickable { onMovieClick(heroMovie.slug) }
                         ) {
-                            Text(
-                                text = heroMovie.title,
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                            AsyncImage(
+                                model = heroMovie.fullPosterUrl,
+                                contentDescription = heroMovie.title,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(heroMovie.year, color = Color.Gray)
-                                Text(heroMovie.quality ?: "HD", color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                Button(
-                                    onClick = { onMovieClick(heroMovie.slug) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = IdlixRed),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Play")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Play", fontWeight = FontWeight.Bold)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(Color.Transparent, Color.Black),
+                                            startY = 200f
+                                        )
+                                    )
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = heroMovie.title,
+                                    fontSize = 32.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(heroMovie.year, color = Color.Gray)
+                                    Text(heroMovie.quality ?: "HD", color = Color.White, fontWeight = FontWeight.Bold)
                                 }
-                                OutlinedButton(
-                                    onClick = { /* TODO */ },
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Icon(imageVector = Icons.Default.Add, contentDescription = "My List")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("My List")
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    Button(
+                                        onClick = { onMovieClick(heroMovie.slug) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = IdlixRed),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Play")
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Play", fontWeight = FontWeight.Bold)
+                                    }
+                                    OutlinedButton(
+                                        onClick = { onMovieClick(heroMovie.slug) },
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Info, contentDescription = "Detail")
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Detail")
+                                    }
                                 }
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    item(span = { GridItemSpan(2) }) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
 
                     // Trending Section
-                    Text(
-                        text = "Trending Now",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(trendingMovies) { movie ->
-                            MovieCard(movie = movie, onClick = { onMovieClick(movie.slug) })
+                    if (trendingMovies.isNotEmpty()) {
+                        item(span = { GridItemSpan(2) }) {
+                            Text(
+                                text = "Trending Now",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                        }
+
+                        item(span = { GridItemSpan(2) }) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
+                        // Scrollable Row for Trending
+                        item(span = { GridItemSpan(2) }) {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(trendingMovies) { movie ->
+                                    MovieCard(movie = movie, onClick = { onMovieClick(movie.slug) })
+                                }
+                            }
                         }
                     }
-                    
-                    Spacer(modifier = Modifier.height(100.dp)) // Padding for bottom nav
+
+                    // For You Section
+                    if (forYouMovies.isNotEmpty()) {
+                        item(span = { GridItemSpan(2) }) {
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+
+                        item(span = { GridItemSpan(2) }) {
+                            Text(
+                                text = "For You",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                        }
+
+                        item(span = { GridItemSpan(2) }) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
+                        items(forYouMovies) { movie ->
+                            Box(modifier = Modifier.padding(8.dp)) {
+                                MovieCard(
+                                    movie = movie,
+                                    modifier = Modifier.fillMaxWidth().height(220.dp),
+                                    onClick = { onMovieClick(movie.slug) }
+                                )
+                            }
+                        }
+                        
+                        item(span = { GridItemSpan(2) }) {
+                            LaunchedEffect(key1 = true) {
+                                viewModel.loadMoreMovies()
+                            }
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isLoadingMore) {
+                                    CircularProgressIndicator(color = IdlixRed, modifier = Modifier.size(32.dp))
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -181,11 +255,9 @@ fun HomeScreen(
 }
 
 @Composable
-fun MovieCard(movie: Movie, onClick: () -> Unit) {
+fun MovieCard(movie: Movie, modifier: Modifier = Modifier.width(120.dp).height(180.dp), onClick: () -> Unit) {
     Box(
-        modifier = Modifier
-            .width(120.dp)
-            .height(180.dp)
+        modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .background(DarkSurface)

@@ -24,9 +24,19 @@ import com.example.watchmobile.ui.components.BottomNavBar
 import com.example.watchmobile.ui.screens.*
 import com.example.watchmobile.ui.theme.WatchMobileTheme
 
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import com.example.watchmobile.utils.CloudflareBypasser
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initial bypass attempt to get valid cookies before UI loads data initially
+        lifecycleScope.launch {
+            CloudflareBypasser.bypass(this@MainActivity, BuildConfig.BASE_URL)
+        }
+
         setContent {
             WatchMobileTheme {
                 WatchMobileApp()
@@ -51,6 +61,9 @@ fun WatchMobileApp() {
                 HomeScreen(
                     onMovieClick = { slug ->
                         navController.navigate("detail/$slug")
+                    },
+                    onSearchClick = {
+                        navController.navigate("discover")
                     }
                 )
             }

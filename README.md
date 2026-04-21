@@ -25,3 +25,9 @@ Aplikasi Android Native berbasis **Kotlin** dan **Jetpack Compose** untuk me-mir
 
 ## Disclaimer
 Aplikasi ini ditujukan murni sebagai bahan pembelajaran (*Proof of Concept*) tentang cara melakukan scraping tingkat lanjut pada *third-party media player*, *Dynamic Environment Handling*, dan mengimplementasikan arsitektur modern Jetpack Compose.
+
+## Pembaruan Terbaru
+- **Infinite Scrolling Pada Home**: Bagian "For You" akan memuat lebih banyak film (5-10 item per halaman) secara otomatis ketika digulir sampai bawah tanpa jeda yang mengganggu.
+- **Tampilan Grid 2x2**: Daftar "For You" pada layar beranda disusun menggunakan *LazyVerticalGrid* untuk memberikan pengalaman navigasi yang lebih lapang.
+- **Perbaikan Navigasi**: Tombol pencarian di halaman *Home* sekarang otomatis beralih dan mengaktifkan halaman *Discover*. *Bottom Navigation Bar* telah diperbarui untuk mereset dan menyesuaikan tab saat berpindah antar root menu.
+- **Manajemen Unduhan**: Halaman *Downloads* diperbarui dengan tampilan status penyimpanan riil tanpa memuat data *dummy* secara bawaan.

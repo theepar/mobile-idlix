@@ -14,16 +14,43 @@ object IdlixScraper {
     private const val USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
-    suspend fun scrapeHomeMovies(): List<Movie> = withContext(Dispatchers.IO) {
+    private fun fetchDocument(url: String, referer: String? = BuildConfig.BASE_URL): org.jsoup.nodes.Document {
+        val userAgentToUse = com.example.watchmobile.utils.CloudflareBypasser.bypassedUserAgent
+
+        val connection = Jsoup.connect(url)
+            .userAgent(userAgentToUse)
+            .header("User-Agent", userAgentToUse)
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+            .header("Accept-Language", "en-US,en;q=0.9,id;q=0.8")
+            .header("Cache-Control", "max-age=0")
+            .header("Upgrade-Insecure-Requests", "1")
+            .cookie("Cookie", com.example.watchmobile.utils.CloudflareBypasser.getCookies())
+            .timeout(15000)
+            .followRedirects(true)
+
+        if (!referer.isNullOrBlank()) {
+            connection.referrer(referer)
+        }
+
+        val cookiesStr = com.example.watchmobile.utils.CloudflareBypasser.getCookies()
+        if (cookiesStr.isNotEmpty()) {
+            for (cookie in cookiesStr.split("; ")) {
+                val split = cookie.split("=", limit = 2)
+                if (split.size == 2) {
+                    connection.cookie(split[0].trim(), split[1].trim())
+                }
+            }
+        }
+
+        return connection.get()
+    }
+
+    suspend fun scrapeHomeMovies(page: Int = 1): List<Movie> = withContext(Dispatchers.IO) {
         val movies = mutableListOf<Movie>()
         try {
-            Log.d(TAG, "Connecting to: ${BuildConfig.BASE_URL}")
-            val document = Jsoup.connect(BuildConfig.BASE_URL)
-                .userAgent(USER_AGENT)
-                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                .header("Accept-Language", "en-US,en;q=0.9,id;q=0.8")
-                .timeout(15000)
-                .get()
+            val url = if (page > 1) "${BuildConfig.BASE_URL}/page/$page/" else BuildConfig.BASE_URL
+            Log.d(TAG, "Connecting to: $url")
+            val document = fetchDocument(url)
 
             Log.d(TAG, "Page title: ${document.title()}")
             Log.d(TAG, "Body length: ${document.body().html().length}")
@@ -120,11 +147,7 @@ object IdlixScraper {
             for (url in urlsToTry) {
                 try {
                     Log.d(TAG, "Trying detail URL: $url")
-                    document = Jsoup.connect(url)
-                        .userAgent(USER_AGENT)
-                        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                        .timeout(15000)
-                        .get()
+                    document = fetchDocument(url)
                     break
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed $url: ${e.message}")
