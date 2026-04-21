@@ -13,20 +13,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.watchmobile.ui.screens.HomeScreen
-import com.example.watchmobile.ui.screens.PlayerScreen
+import com.example.watchmobile.ui.components.BottomNavBar
+import com.example.watchmobile.ui.screens.*
+import com.example.watchmobile.ui.theme.WatchMobileTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    WatchMobileApp()
-                }
+            WatchMobileTheme {
+                WatchMobileApp()
             }
         }
     }
@@ -36,36 +32,66 @@ class MainActivity : ComponentActivity() {
 fun WatchMobileApp() {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "home") {
-        composable("home") {
-            HomeScreen(
-                onMovieClick = { slug ->
-                    // Simulasi: Mengarahkan ke player dengan video dummy Big Buck Bunny
-                    // Dalam implementasi nyata, di sini Anda harus fetch detail movie dulu untuk dapat Iframe, 
-                    // lalu jalankan MediaResolver, baru buka PlayerScreen.
-                    
-                    val dummyVideo = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
-                    // Mengenkode URL agar aman dikirim sebagai argumen navigasi
-                    val encodedUrl = java.net.URLEncoder.encode(dummyVideo, "UTF-8")
-                    navController.navigate("player/$encodedUrl")
-                }
-            )
-        }
-        
-        composable(
-            route = "player/{videoUrl}",
-            arguments = listOf(
-                navArgument("videoUrl") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val videoUrl = backStackEntry.arguments?.getString("videoUrl") ?: ""
-            // Decode kembali URL
-            val decodedUrl = java.net.URLDecoder.decode(videoUrl, "UTF-8")
+    Scaffold(
+        bottomBar = { BottomNavBar(navController = navController) }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController, 
+            startDestination = "home",
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable("home") {
+                HomeScreen(
+                    onMovieClick = { slug ->
+                        navController.navigate("detail/$slug")
+                    }
+                )
+            }
             
-            PlayerScreen(
-                videoUrl = decodedUrl,
-                subtitleUrl = null // Tidak ada subtitle dummy untuk saat ini
-            )
+            composable("discover") {
+                // Placeholder for discover
+                Box(modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    androidx.compose.material3.Text("Discover Coming Soon", color = androidx.compose.ui.graphics.Color.White)
+                }
+            }
+
+            composable("downloads") {
+                DownloadsScreen()
+            }
+
+            composable("profile") {
+                ProfileScreen()
+            }
+
+            composable(
+                route = "detail/{slug}",
+                arguments = listOf(navArgument("slug") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val slug = backStackEntry.arguments?.getString("slug") ?: ""
+                MovieDetailScreen(
+                    slug = slug,
+                    onPlayClick = { videoUrl ->
+                        val encodedUrl = java.net.URLEncoder.encode(videoUrl, "UTF-8")
+                        navController.navigate("player/$encodedUrl")
+                    },
+                    onBackClick = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            
+            composable(
+                route = "player/{videoUrl}",
+                arguments = listOf(navArgument("videoUrl") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val videoUrl = backStackEntry.arguments?.getString("videoUrl") ?: ""
+                val decodedUrl = java.net.URLDecoder.decode(videoUrl, "UTF-8")
+                
+                PlayerScreen(
+                    videoUrl = decodedUrl,
+                    subtitleUrl = null
+                )
+            }
         }
     }
 }

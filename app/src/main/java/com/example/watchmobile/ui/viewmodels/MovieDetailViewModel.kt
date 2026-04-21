@@ -3,37 +3,34 @@ package com.example.watchmobile.ui.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.watchmobile.data.network.IdlixScraper
-import com.example.watchmobile.domain.models.Movie
+import com.example.watchmobile.domain.models.MovieDetail
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class HomeViewModel : ViewModel() {
+class MovieDetailViewModel : ViewModel() {
+    private val _movieDetail = MutableStateFlow<MovieDetail?>(null)
+    val movieDetail: StateFlow<MovieDetail?> = _movieDetail
 
-    private val _movies = MutableStateFlow<List<Movie>>(emptyList())
-    val movies: StateFlow<List<Movie>> = _movies
-
-    private val _isLoading = MutableStateFlow(true)
+    private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
-    
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    init {
-        fetchMovies()
-    }
-
-    private fun fetchMovies() {
+    fun fetchMovieDetail(slug: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             try {
-                // Fetch data dari HTML Scraper
-                val scrapedMovies = IdlixScraper.scrapeHomeMovies()
-                _movies.value = scrapedMovies
+                val detail = IdlixScraper.scrapeMovieDetail(slug)
+                if (detail != null) {
+                    _movieDetail.value = detail
+                } else {
+                    _error.value = "Failed to load movie details."
+                }
             } catch (e: Exception) {
-                e.printStackTrace()
-                _error.value = e.localizedMessage ?: "Terjadi kesalahan saat memuat data"
+                _error.value = e.localizedMessage ?: "Unknown error occurred"
             } finally {
                 _isLoading.value = false
             }
