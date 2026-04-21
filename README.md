@@ -1,6 +1,6 @@
-# WatchMobile (IDLIX App)
+# IDXM (IDX Mobile)
 
-Aplikasi Android Native berbasis **Kotlin** dan **Jetpack Compose** untuk me-mirror data film dari IDLIX. Aplikasi ini dilengkapi dengan sistem ekstraksi media pintar untuk mem-bypass Iframe dan memainkan video HLS murni menggunakan Media3 ExoPlayer.
+Aplikasi Android Native berbasis **Kotlin** dan **Jetpack Compose** untuk me-mirror data film. Aplikasi ini dilengkapi dengan sistem ekstraksi media pintar untuk mem-bypass Iframe dan memainkan video HLS murni menggunakan Media3 ExoPlayer.
 
 ## Fitur Utama
 - **Native Android UI**: Dibangun sepenuhnya dengan Jetpack Compose modern.
