@@ -10,7 +10,7 @@ val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localProperties.load(localPropertiesFile.inputStream())
 }
-val baseUrl = localProperties.getProperty("BASE_URL") ?: "https://z1.idlixku.com"
+val baseUrl = (localProperties.getProperty("BASE_URL") ?: "https://z1.idlixku.com").removeSurrounding("\"")
 
 
 android {

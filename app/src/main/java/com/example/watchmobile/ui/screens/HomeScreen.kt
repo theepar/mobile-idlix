@@ -109,7 +109,7 @@ fun MovieCard(movie: Movie, onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(text = movie.year, fontSize = 12.sp, color = Color.Gray)
-                    Text(text = "⭐ \${movie.voteAverage ?: "-"}", fontSize = 12.sp, color = Color(0xFFFFA000))
+                    Text(text = "⭐ ${movie.voteAverage ?: "-"}", fontSize = 12.sp, color = Color(0xFFFFA000))
                 }
             }
         }

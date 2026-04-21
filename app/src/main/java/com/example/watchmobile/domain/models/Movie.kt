@@ -22,7 +22,7 @@ data class Movie(
     // Helper untuk mendapatkan full URL gambar (asumsi menggunakan TMDB image server)
     val fullPosterUrl: String
         get() = if (posterPath != null && posterPath.startsWith("/")) {
-            "https://image.tmdb.org/t/p/w500\$posterPath"
+            "https://image.tmdb.org/t/p/w500$posterPath"
         } else {
             posterPath ?: ""
         }
