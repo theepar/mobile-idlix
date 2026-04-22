@@ -22,6 +22,7 @@ import androidx.media3.exoplayer.offline.DownloadService
 import com.example.watchmobile.services.DemoDownloadService
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -34,10 +35,18 @@ import coil.compose.AsyncImage
 import com.example.watchmobile.ui.theme.DarkSurface
 import com.example.watchmobile.ui.theme.IdlixRed
 import com.example.watchmobile.ui.viewmodels.MovieDetailViewModel
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.filled.*
 
 @Composable
 fun MovieDetailScreen(
     slug: String,
+    autoPlay: Boolean = false,
     onPlayClick: (String) -> Unit,
     onBackClick: () -> Unit,
     viewModel: MovieDetailViewModel = viewModel()
@@ -47,10 +56,37 @@ fun MovieDetailScreen(
     }
 
     val detail by viewModel.movieDetail.collectAsState()
+    val context = LocalContext.current
+    
+    // Save to history when detail is loaded
+    LaunchedEffect(detail) {
+        detail?.let {
+            val movie = com.example.watchmobile.domain.models.Movie(
+                id = it.id,
+                title = it.title,
+                slug = slug,
+                posterPath = it.posterPath,
+                backdropPath = it.backdropPath,
+                releaseDate = it.releaseDate,
+                voteAverage = it.voteAverage,
+                viewCount = 0,
+                quality = it.quality ?: "HD",
+                contentType = "movie" // Default to movie or handle based on URL
+            )
+            com.example.watchmobile.utils.HistoryManager.saveToHistory(context, movie)
+        }
+    }
+    
+    // Auto play logic
+    LaunchedEffect(detail) {
+        if (autoPlay && detail != null) {
+            val embed = detail!!.embedUrl ?: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+            onPlayClick(embed)
+        }
+    }
     val isLoading by viewModel.isLoading.collectAsState()
     
     var showResolutionDialog by remember { mutableStateOf(false) }
-    val context = LocalContext.current
 
     if (isLoading) {
         Box(modifier = Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
@@ -86,28 +122,67 @@ fun MovieDetailScreen(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+            // Top-down gradient for back button visibility
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
+                        )
+                    )
+            )
+            
+            // Watch Now Button in the center of backdrop
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Button(
+                    onClick = { 
+                        detail?.embedUrl?.let { onPlayClick(it) } ?: onPlayClick("https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8")
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = IdlixRed),
+                    shape = CircleShape,
+                    modifier = Modifier.size(60.dp),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Watch Now",
+                        tint = Color.White,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+            
+            // Bottom-up gradient to blend with content
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(Color.Transparent, Color.Black),
-                            startY = 100f
+                            startY = 400f // Start fade later for clear image
                         )
                     )
             )
             
             // Back Button
-            Box(
+            IconButton(
+                onClick = onBackClick,
                 modifier = Modifier
                     .padding(16.dp)
                     .size(40.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .clickable { onBackClick() },
-                contentAlignment = Alignment.Center
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.2f))
             ) {
-                Text("←", color = Color.White, fontSize = 20.sp)
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
             }
         }
 

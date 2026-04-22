@@ -31,10 +31,22 @@ fun WatchMobileTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = TrueBlack.toArgb()
-            window.navigationBarColor = TrueBlack.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            val context = view.context
+            val window = if (context is Activity) {
+                context.window
+            } else {
+                var currentContext = context
+                while (currentContext is android.content.ContextWrapper && currentContext !is Activity) {
+                    currentContext = currentContext.baseContext
+                }
+                (currentContext as? Activity)?.window
+            }
+            
+            window?.let {
+                it.statusBarColor = TrueBlack.toArgb()
+                it.navigationBarColor = TrueBlack.toArgb()
+                WindowCompat.getInsetsController(it, view).isAppearanceLightStatusBars = false
+            }
         }
     }
 

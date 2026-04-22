@@ -8,7 +8,11 @@ import com.example.watchmobile.utils.DownloadUtil
 class WatchMobileApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Initialize download manager and cache when app starts
-        DownloadUtil.getDownloadManager(this)
+        try {
+            // Initialize download manager and cache when app starts
+            DownloadUtil.getDownloadManager(this)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

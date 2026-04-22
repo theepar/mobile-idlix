@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "WatchMobile"
+rootProject.name = "IDLIX Mobile"
 include(":app")

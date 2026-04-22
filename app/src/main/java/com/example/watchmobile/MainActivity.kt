@@ -62,6 +62,9 @@ fun WatchMobileApp() {
                     onMovieClick = { slug ->
                         navController.navigate("detail/$slug")
                     },
+                    onPlayClick = { slug ->
+                        navController.navigate("detail/$slug?autoPlay=true")
+                    },
                     onSearchClick = {
                         navController.navigate("discover")
                     }
@@ -72,6 +75,9 @@ fun WatchMobileApp() {
                 DiscoverScreen(
                     onMovieClick = { slug ->
                         navController.navigate("detail/$slug")
+                    },
+                    onBackClick = {
+                        navController.popBackStack()
                     }
                 )
             }
@@ -80,17 +86,23 @@ fun WatchMobileApp() {
                 DownloadsScreen()
             }
 
-            composable("profile") {
-                ProfileScreen()
+            composable("history") {
+                HistoryScreen()
             }
 
             composable(
-                route = "detail/{slug}",
-                arguments = listOf(navArgument("slug") { type = NavType.StringType })
+                route = "detail/{slug}?autoPlay={autoPlay}",
+                arguments = listOf(
+                    navArgument("slug") { type = NavType.StringType },
+                    navArgument("autoPlay") { type = NavType.BoolType; defaultValue = false }
+                )
             ) { backStackEntry ->
                 val slug = backStackEntry.arguments?.getString("slug") ?: ""
+                val autoPlay = backStackEntry.arguments?.getBoolean("autoPlay") ?: false
+                
                 MovieDetailScreen(
                     slug = slug,
+                    autoPlay = autoPlay,
                     onPlayClick = { videoUrl ->
                         val encodedUrl = java.net.URLEncoder.encode(videoUrl, "UTF-8")
                         navController.navigate("player/$encodedUrl")

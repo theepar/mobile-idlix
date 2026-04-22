@@ -24,8 +24,8 @@ object IdlixScraper {
             .header("Accept-Language", "en-US,en;q=0.9,id;q=0.8")
             .header("Cache-Control", "max-age=0")
             .header("Upgrade-Insecure-Requests", "1")
-            .cookie("Cookie", com.example.watchmobile.utils.CloudflareBypasser.getCookies())
             .timeout(15000)
+            .ignoreHttpErrors(true)
             .followRedirects(true)
 
         if (!referer.isNullOrBlank()) {
@@ -34,6 +34,7 @@ object IdlixScraper {
 
         val cookiesStr = com.example.watchmobile.utils.CloudflareBypasser.getCookies()
         if (cookiesStr.isNotEmpty()) {
+            Log.d(TAG, "Using cookies for $url: ${cookiesStr.take(50)}...")
             for (cookie in cookiesStr.split("; ")) {
                 val split = cookie.split("=", limit = 2)
                 if (split.size == 2) {
@@ -45,62 +46,56 @@ object IdlixScraper {
         return connection.get()
     }
 
-    suspend fun scrapeHomeMovies(page: Int = 1): List<Movie> = withContext(Dispatchers.IO) {
+    private suspend fun scrapeMoviesFromUrl(url: String): List<Movie> = withContext(Dispatchers.IO) {
         val movies = mutableListOf<Movie>()
         try {
-            val url = if (page > 1) "${BuildConfig.BASE_URL}/page/$page/" else BuildConfig.BASE_URL
             Log.d(TAG, "Connecting to: $url")
             val document = fetchDocument(url)
 
-            Log.d(TAG, "Page title: ${document.title()}")
-            Log.d(TAG, "Body length: ${document.body().html().length}")
-
-            // Try broad selectors first - Next.js / WordPress streaming themes
             val selectors = listOf(
-                "article.item",           // Dooplay/PsyPlay WordPress theme
-                "div.item",               // Common streaming theme
-                "div.post-item",          // Post-based layout
-                "li.post-item",           // List-based layout
-                "div[class*='movie']",    // Any div with 'movie' in class
-                "div[class*='film']",     // Any div with 'film' in class
-                "div[class*='item']",     // Any div with 'item' in class
-                "div[class*='card']",     // Card-based layout (Next.js common)
-                "a[href*='/movie/']",     // Direct movie links
-                "a[href*='/film/']",      // Film links
-                "a[href*='/series/']"     // Series links
+                "a.content-card",          // Current IDLIX Structure
+                "article.item-movies",     // Legacy IDLIX Home
+                "article.item",            // Legacy IDLIX Genre
+                "div.item",
+                "div.post-item",
+                "div[class*='movie']",
+                "div[class*='film']",
+                "div[class*='card']"
             )
 
-            var movieElements = document.select("article.item, div.item")
-            Log.d(TAG, "article.item / div.item count: ${movieElements.size}")
-
+            var movieElements = document?.select("a.content-card, article.item-movies, article.item, div.item, .post-item, .ml-item") ?: org.jsoup.select.Elements()
             if (movieElements.isEmpty()) {
                 for (selector in selectors) {
-                    movieElements = document.select(selector)
-                    Log.d(TAG, "Trying '$selector': found ${movieElements.size} elements")
-                    if (movieElements.isNotEmpty()) break
+                    movieElements = document?.select(selector) ?: org.jsoup.select.Elements()
+                    if (movieElements.isNotEmpty()) {
+                        Log.d(TAG, "Found elements using selector: $selector")
+                        break
+                    }
                 }
             }
+            
+            Log.d(TAG, "Found ${movieElements.size} movie elements on page $url")
 
-            Log.d(TAG, "Total elements found: ${movieElements.size}")
-
-            for (element in movieElements.take(20)) {
-                // Title - try multiple selectors
+            for (element in movieElements) {
+                // Title
                 val titleEl = element.selectFirst("h3, h2, h1, .title, [class*='title'], [class*='name']")
                     ?: element.selectFirst("a")
-                val title = titleEl?.text()?.trim()
-                if (title.isNullOrBlank()) continue
+                val title = titleEl?.text()?.trim() ?: element.attr("title")
+                if (title.isBlank()) continue
 
                 // URL / slug
                 val aEl = element.selectFirst("a[href]") ?: element.closest("a[href]")
                 val href = aEl?.attr("href") ?: ""
-                val slug = href.trimEnd('/').substringAfterLast("/").ifBlank { title.lowercase().replace(" ", "-") }
+                val fullPath = href.replace(BuildConfig.BASE_URL, "").trim('/')
+                val slug = if (fullPath.contains("/")) fullPath else fullPath.substringAfterLast("/")
+                if (slug.isBlank()) continue
 
                 // Poster image
                 val imgEl = element.selectFirst("img[src], img[data-src]")
                 val posterPath = imgEl?.attr("src")?.takeIf { it.isNotBlank() }
                     ?: imgEl?.attr("data-src")
 
-                // Quality badge
+                // Quality
                 val quality = element.selectFirst(".quality, .badge, [class*='quality'], [class*='badge'], [class*='hdtv']")
                     ?.text()?.takeIf { it.isNotBlank() } ?: "HD"
 
@@ -111,7 +106,9 @@ object IdlixScraper {
                 // Year
                 val year = element.selectFirst(".year, .date, [class*='year'], [class*='date']")?.text()
 
-                Log.d(TAG, "Movie: $title | $slug | $posterPath")
+                // Genre from text if exists
+                val genre = element.selectFirst(".genre, .genres, [class*='genre']")?.text()
+
                 movies.add(
                     Movie(
                         id = UUID.randomUUID().toString(),
@@ -123,24 +120,80 @@ object IdlixScraper {
                         voteAverage = ratingRaw,
                         viewCount = 0,
                         quality = quality,
-                        contentType = if (href.contains("series")) "series" else "movie"
+                        contentType = genre ?: (if (href.contains("series")) "series" else "movie")
                     )
                 )
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error scraping home: ${e.message}", e)
+            Log.e(TAG, "Error scraping url $url: ${e.message}", e)
         }
-        Log.d(TAG, "Returning ${movies.size} movies")
         movies
+    }
+
+    suspend fun scrapeHomeMovies(page: Int = 1): List<Movie> {
+        val url = if (page > 1) "${BuildConfig.BASE_URL}/page/$page/" else BuildConfig.BASE_URL
+        return scrapeMoviesFromUrl(url).take(20) // Home usually needs limited but Discover can take all
+    }
+
+    private val genreMapping = mapOf(
+        "aksi" to "action",
+        "animasi" to "animation",
+        "horor" to "horror",
+        "romantis" to "romance",
+        "kriminal" to "crime",
+        "misteri" to "mystery",
+        "petualangan" to "adventure",
+        "komedi" to "comedy",
+        "keluarga" to "family",
+        "fantasi" to "fantasy",
+        "perang" to "war",
+        "sci-fi" to "sci-fi",
+        "drama" to "drama"
+    )
+
+    suspend fun scrapeCategoryMovies(category: String, page: Int = 1, searchQuery: String = ""): List<Movie> {
+        val baseUrl = com.example.watchmobile.BuildConfig.BASE_URL
+        
+        // Handle "Semua" specially to match Home exactly
+        if (searchQuery.isBlank() && category.equals("Semua", ignoreCase = true)) {
+            return scrapeHomeMovies(page)
+        }
+
+        var url = when {
+            searchQuery.isNotBlank() -> {
+                "$baseUrl/?s=$searchQuery"
+            }
+            category.equals("Series", ignoreCase = true) || category.equals("TV Series", ignoreCase = true) -> {
+                "$baseUrl/series/"
+            }
+            else -> {
+                val genreSlug = genreMapping[category.lowercase()] ?: category.lowercase().replace(" ", "-")
+                "$baseUrl/genre/$genreSlug/"
+            }
+        }
+
+        // Add pagination
+        if (page > 1) {
+            url = if (url.contains("?s=")) {
+                "$url&paged=$page"
+            } else {
+                "${url.trimEnd('/')}/page/$page/"
+            }
+        }
+        
+        Log.d(TAG, "Scraping Discover URL: $url")
+        return scrapeMoviesFromUrl(url)
     }
 
     suspend fun scrapeMovieDetail(slug: String): MovieDetail? = withContext(Dispatchers.IO) {
         try {
-            // Try both /movie/ and direct slug path
+            // Try both /movie/, /series/, and direct slug path
             val urlsToTry = listOf(
-                "${BuildConfig.BASE_URL}/movie/$slug",
-                "${BuildConfig.BASE_URL}/$slug",
-                "${BuildConfig.BASE_URL}/film/$slug"
+                "${com.example.watchmobile.BuildConfig.BASE_URL}/movie/$slug",
+                "${com.example.watchmobile.BuildConfig.BASE_URL}/series/$slug",
+                "${com.example.watchmobile.BuildConfig.BASE_URL}/tv/$slug",
+                "${com.example.watchmobile.BuildConfig.BASE_URL}/$slug",
+                "${com.example.watchmobile.BuildConfig.BASE_URL}/film/$slug"
             )
 
             var document: org.jsoup.nodes.Document? = null
@@ -156,25 +209,31 @@ object IdlixScraper {
 
             if (document == null) return@withContext null
 
-            val title = document.selectFirst("h1, .title, [class*='title']")?.text() ?: slug
+            val title = document.selectFirst(".data h1, .title h1, h1, .title")?.text() ?: slug
             val imgEl = document.selectFirst(".poster img, .sbox img, .imagen img, [class*='poster'] img")
             val posterPath = imgEl?.attr("src") ?: ""
-            val backdropPath = document.selectFirst("[class*='backdrop'] img, [class*='hero'] img")
+            val backdropPath = document.selectFirst("[class*='backdrop'] img, [class*='hero'] img, .imagen img")
                 ?.attr("src") ?: posterPath
-            val synopsis = document.selectFirst("[class*='description'], [class*='synopsis'], .wp-content p, #info p, .sbox p")
+            val synopsis = document.selectFirst(".wp-content p, .description p, .synopsis p, .sbox p, #info p")
                 ?.text() ?: "No synopsis available."
-            val iframeEl = document.selectFirst("iframe[src]")
+            
+            // Try to find the first iframe for the video player
+            val iframeEl = document.selectFirst(".player-box iframe, .p-box iframe, iframe[src*='embed'], .video-content iframe") 
+                ?: document.selectFirst("iframe[src]")
             val embedUrl = iframeEl?.attr("src")
-            val cast = document.select("[class*='cast'] a, [class*='actor'], .castItem, .person")
-                .map { it.text() }.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() } ?: listOf("Unknown")
-            val genres = document.select("[class*='genre'] a, .sgeneros a, .genres a")
-                .map { it.text() }.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() } ?: listOf("Movie")
-            val quality = document.selectFirst(".quality, [class*='quality']")?.text() ?: "HD"
-            val rating = document.selectFirst(".rating, .imdb, [class*='rating']")
+            
+            val cast = document.select(".persons .person a, [class*='cast'] a, .castItem a, .starring a")
+                .map { it.text() }.filter { it.isNotBlank() }.distinct().takeIf { it.isNotEmpty() } ?: listOf("N/A")
+            
+            val genres = document.select(".sgeneros a, .genres a, [class*='genre'] a, .category a")
+                .map { it.text() }.filter { it.isNotBlank() }.distinct().takeIf { it.isNotEmpty() } ?: listOf("Movie")
+            
+            val quality = document.selectFirst(".quality, [class*='quality'], .badge-quality")?.text() ?: "HD"
+            val rating = document.selectFirst(".rating, .imdb, .score, .num")
                 ?.text()?.replace(Regex("[^0-9.]"), "") ?: "0.0"
-            val year = document.selectFirst(".date, .year, [class*='year']")?.text() ?: "N/A"
+            val year = document.selectFirst(".date, .year, .release, .released")?.text() ?: "N/A"
 
-            Log.d(TAG, "Detail: $title | embed: $embedUrl | genres: $genres")
+            Log.d(TAG, "Scraped Detail Success: $title | embed: $embedUrl")
 
             MovieDetail(
                 id = UUID.randomUUID().toString(),

@@ -21,10 +21,19 @@ data class Movie(
 ) {
     // Helper untuk mendapatkan full URL gambar (asumsi menggunakan TMDB image server)
     val fullPosterUrl: String
-        get() = if (posterPath != null && posterPath.startsWith("/")) {
-            "https://image.tmdb.org/t/p/w500$posterPath"
-        } else {
-            posterPath ?: ""
+        get() = when {
+            posterPath == null -> ""
+            posterPath.startsWith("http") -> posterPath
+            posterPath.startsWith("//") -> "https:$posterPath"
+            posterPath.startsWith("/") -> {
+                // Check if it's likely a TMDB path (usually starts with /v/ or /p/)
+                if (posterPath.contains("/t/p/") || posterPath.length < 40) {
+                     "https://image.tmdb.org/t/p/w500$posterPath"
+                } else {
+                    "${com.example.watchmobile.BuildConfig.BASE_URL}$posterPath"
+                }
+            }
+            else -> posterPath
         }
         
     val year: String

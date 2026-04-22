@@ -3,10 +3,8 @@ package com.example.watchmobile.ui.screens
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,6 +18,30 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.example.watchmobile.domain.MediaResolver
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -35,11 +57,19 @@ fun PlayerScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Initialize ExoPlayer
+    // Initialize ExoPlayer with CacheDataSourceFactory
     val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            playWhenReady = true
-        }
+        val trackSelector = androidx.media3.exoplayer.trackselection.DefaultTrackSelector(context)
+        val dataSourceFactory = com.example.watchmobile.utils.DownloadUtil.getDataSourceFactory(context)
+        val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
+        
+        ExoPlayer.Builder(context)
+            .setTrackSelector(trackSelector)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .build()
+            .apply {
+                playWhenReady = true
+            }
     }
 
     LaunchedEffect(videoUrl) {
@@ -102,15 +132,112 @@ fun PlayerScreen(
             Text(errorMessage!!, color = Color.White)
         }
     } else {
-        AndroidView(
-            factory = {
-                PlayerView(context).apply {
-                    player = exoPlayer
-                    useController = true
-                    keepScreenOn = true
+        var isControllerVisible by remember { mutableStateOf(true) }
+        
+        Box(modifier = modifier.fillMaxSize().background(Color.Black)) {
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        player = exoPlayer
+                        useController = true
+                        keepScreenOn = true
+                        setShowNextButton(false)
+                        setShowPreviousButton(false)
+                        setShowSubtitleButton(true)
+                        
+                        setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+                            isControllerVisible = visibility == android.view.View.VISIBLE
+                        })
+                        
+                        // Fullscreen toggle (rotasi)
+                        setFullscreenButtonClickListener { isFullScreen ->
+                            val activity = ctx as? android.app.Activity
+                            if (isFullScreen) {
+                                activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                            } else {
+                                activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+            
+            // Premium Overlay (Back, Title, Skip)
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isControllerVisible,
+                enter = androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.fadeOut(),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Top Bar: Back & Title
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .fillMaxWidth()
+                            .background(Brush.verticalGradient(listOf(Color.Black.copy(0.7f), Color.Transparent)))
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                val activity = context as? android.app.Activity
+                                activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                                (context as? androidx.activity.ComponentActivity)?.onBackPressedDispatcher?.onBackPressed()
+                            },
+                            modifier = Modifier.background(Color.Black.copy(0.3f), CircleShape)
+                        ) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                        
+                        Spacer(modifier = Modifier.width(16.dp))
+                        
+                        Text(
+                            text = "Streaming Movie", // Could pass actual title here
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    // Center: Skip Buttons (Optional, but "selayaknya stream")
+                    Row(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalArrangement = Arrangement.spacedBy(64.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = { exoPlayer.seekBack() },
+                            modifier = Modifier.size(64.dp).background(Color.Black.copy(0.3f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.Replay10,
+                                contentDescription = "Skip -10s",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+
+                        // Space for ExoPlayer's own play/pause button if not hiding it
+                        Spacer(modifier = Modifier.width(32.dp))
+
+                        IconButton(
+                            onClick = { exoPlayer.seekForward() },
+                            modifier = Modifier.size(64.dp).background(Color.Black.copy(0.3f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.Forward10,
+                                contentDescription = "Skip +10s",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
                 }
-            },
-            modifier = modifier.fillMaxSize().background(Color.Black)
-        )
+            }
+        }
     }
 }

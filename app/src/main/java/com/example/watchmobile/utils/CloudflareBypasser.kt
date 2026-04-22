@@ -48,15 +48,27 @@ object CloudflareBypasser {
         Log.d(TAG, "Starting Cloudflare bypass for $url")
         isBypassing = true
         
-        val result = suspendCoroutine<Boolean> { continuation ->
-            var isResumed = false
-            val webView = WebView(context).apply {
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                settings.userAgentString = settings.userAgentString.replace("; wv", "") // Disguise WebView
-            }
-            
-            bypassedUserAgent = webView.settings.userAgentString
+        val result = try {
+            suspendCoroutine<Boolean> { continuation ->
+                var isResumed = false
+                val webView = try {
+                    WebView(context).apply {
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.userAgentString = settings.userAgentString.replace("; wv", "")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to create WebView: ${e.message}")
+                    if (!isResumed) {
+                        isResumed = true
+                        continuation.resume(false)
+                    }
+                    null
+                }
+
+                if (webView == null) return@suspendCoroutine
+
+                bypassedUserAgent = webView.settings.userAgentString
 
             webView.webViewClient = object : WebViewClient() {
                 // Intercept request to block ads/popups, reducing noise during Cloudflare challenge
@@ -113,6 +125,10 @@ object CloudflareBypasser {
                     webView.destroy()
                 }
             }, 15000)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Bypass error: ${e.message}")
+            false
         }
         
         isBypassing = false

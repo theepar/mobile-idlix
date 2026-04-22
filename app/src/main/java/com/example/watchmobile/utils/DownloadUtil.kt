@@ -54,4 +54,13 @@ object DownloadUtil {
         }
         return downloadManager!!
     }
+
+    @Synchronized
+    fun getDataSourceFactory(context: Context): androidx.media3.datasource.DataSource.Factory {
+        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+        return androidx.media3.datasource.cache.CacheDataSource.Factory()
+            .setCache(getDownloadCache(context))
+            .setUpstreamDataSourceFactory(httpDataSourceFactory)
+            .setCacheWriteDataSinkFactory(null) // Disable writing to cache during playback for now
+    }
 }

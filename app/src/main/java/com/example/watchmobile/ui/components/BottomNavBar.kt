@@ -12,11 +12,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -26,7 +26,7 @@ sealed class BottomNavItem(val route: String, val selectedIcon: ImageVector, val
     object Home : BottomNavItem("home", Icons.Filled.Home, Icons.Outlined.Home, "Home")
     object Discover : BottomNavItem("discover", Icons.Filled.Explore, Icons.Outlined.Explore, "Discover")
     object Downloads : BottomNavItem("downloads", Icons.Filled.Download, Icons.Outlined.Download, "Downloads")
-    object Profile : BottomNavItem("profile", Icons.Filled.Person, Icons.Outlined.Person, "Profile")
+    object History : BottomNavItem("history", Icons.Filled.History, Icons.Outlined.History, "History")
 }
 
 @Composable
@@ -35,7 +35,7 @@ fun BottomNavBar(navController: NavController) {
         BottomNavItem.Home,
         BottomNavItem.Discover,
         BottomNavItem.Downloads,
-        BottomNavItem.Profile
+        BottomNavItem.History
     )
     val navBackStackEntry = navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry.value?.destination?.route

@@ -40,6 +40,7 @@ import com.example.watchmobile.ui.viewmodels.HomeViewModel
 @Composable
 fun HomeScreen(
     onMovieClick: (String) -> Unit,
+    onPlayClick: (String) -> Unit,
     onSearchClick: () -> Unit,
     viewModel: HomeViewModel = viewModel()
 ) {
@@ -49,30 +50,12 @@ fun HomeScreen(
     val errorMsg by viewModel.error.collectAsState()
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("IDLIX", fontWeight = FontWeight.Black, color = IdlixRed, fontSize = 24.sp) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
-                ),
-                actions = {
-                    IconButton(onClick = onSearchClick) {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = "Search", tint = Color.White)
-                    }
-                },
-                modifier = Modifier.background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.8f), Color.Transparent)
-                    )
-                )
-            )
-        },
         containerColor = Color.Black
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
             if (isLoading && movies.isEmpty()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = IdlixRed)
@@ -103,12 +86,35 @@ fun HomeScreen(
                     contentPadding = PaddingValues(bottom = 100.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Hero Section
+                    // Non-sticky Header with deeper gradient
                     item(span = { GridItemSpan(2) }) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(450.dp)
+                                .height(160.dp) // Deeper black fade
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Black, Color.Black.copy(alpha = 0.95f), Color.Black.copy(alpha = 0.5f), Color.Transparent)
+                                    )
+                                )
+                        ) {
+                            Text(
+                                text = "IDLIX",
+                                color = IdlixRed,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 28.sp,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+                    }
+
+                    // Hero Section (Shifted up to be behind the gradient)
+                    item(span = { GridItemSpan(2) }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(550.dp) // Taller hero
+                                .padding(top = (-120).dp) // Negative padding to slide under header
                                 .clickable { onMovieClick(heroMovie.slug) }
                         ) {
                             AsyncImage(
@@ -117,54 +123,72 @@ fun HomeScreen(
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
                             )
+                            
+                            // Bottom fade for hero
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .background(
                                         Brush.verticalGradient(
-                                            colors = listOf(Color.Transparent, Color.Black),
-                                            startY = 200f
+                                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f), Color.Black),
+                                            startY = 400f
                                         )
                                     )
                             )
+                            
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .padding(16.dp),
+                                    .padding(bottom = 32.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
                                     text = heroMovie.title,
+                                    color = Color.White,
                                     fontSize = 32.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.padding(horizontal = 24.dp)
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text(heroMovie.year, color = Color.Gray)
-                                    Text(heroMovie.quality ?: "HD", color = Color.White, fontWeight = FontWeight.Bold)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = heroMovie.year, color = Color.Gray, fontSize = 16.sp)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Surface(
+                                        color = IdlixRed.copy(alpha = 0.2f),
+                                        shape = RoundedCornerShape(4.dp),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, IdlixRed.copy(alpha = 0.5f))
+                                    ) {
+                                        Text(
+                                            text = heroMovie.quality ?: "HD",
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            fontSize = 12.sp,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
-                                Spacer(modifier = Modifier.height(16.dp))
+                                Spacer(modifier = Modifier.height(24.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                     Button(
-                                        onClick = { onMovieClick(heroMovie.slug) },
+                                        onClick = { onPlayClick(heroMovie.slug) },
                                         colors = ButtonDefaults.buttonColors(containerColor = IdlixRed),
-                                        shape = RoundedCornerShape(8.dp)
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.height(48.dp).width(120.dp)
                                     ) {
                                         Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Play")
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text("Play", fontWeight = FontWeight.Bold)
                                     }
-                                    OutlinedButton(
+                                    Button(
                                         onClick = { onMovieClick(heroMovie.slug) },
-                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                                        shape = RoundedCornerShape(8.dp)
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.2f)),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.height(48.dp).width(120.dp)
                                     ) {
-                                        Icon(imageVector = Icons.Default.Info, contentDescription = "Detail")
+                                        Icon(imageVector = Icons.Default.Info, contentDescription = "Detail", tint = Color.White)
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Detail")
+                                        Text("Detail", color = Color.White)
                                     }
                                 }
                             }

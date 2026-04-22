@@ -27,13 +27,45 @@ object MediaResolver {
      */
     suspend fun resolveMedia(embedUrl: String): Result<MediaData> = withContext(Dispatchers.IO) {
         try {
-            // Fetch the HTML source of the embed/iframe URL
-            val document = Jsoup.connect(embedUrl)
-                .userAgent(USER_AGENT)
-                .referrer("https://z1.idlixku.com/")
-                .ignoreContentType(true)
-                .get()
+            // Replace IDLIX host with our Cloudflare Worker proxy if it's an IDLIX URL
+            var finalUrl = embedUrl
+            if (finalUrl.startsWith("/")) {
+                finalUrl = com.example.watchmobile.BuildConfig.BASE_URL + finalUrl
+            } else if (finalUrl.contains("idlix")) {
+                try {
+                    val originalHost = java.net.URL(finalUrl).host
+                    val proxyHost = java.net.URL(com.example.watchmobile.BuildConfig.BASE_URL).host
+                    finalUrl = finalUrl.replace(originalHost, proxyHost)
+                } catch (e: Exception) {
+                    // Ignore URL parsing errors
+                }
+            }
 
+            android.util.Log.d("MediaResolver", "Resolving embed URL: $finalUrl")
+
+            // Fetch the HTML source of the embed/iframe URL
+            val userAgentToUse = com.example.watchmobile.utils.CloudflareBypasser.bypassedUserAgent
+
+            val connection = Jsoup.connect(finalUrl)
+                .userAgent(userAgentToUse)
+                .header("User-Agent", userAgentToUse)
+                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+                .header("Accept-Language", "en-US,en;q=0.9,id;q=0.8")
+                .referrer(com.example.watchmobile.BuildConfig.BASE_URL)
+                .ignoreContentType(true)
+                .timeout(15000)
+
+            val cookiesStr = com.example.watchmobile.utils.CloudflareBypasser.getCookies()
+            if (cookiesStr.isNotEmpty()) {
+                for (cookie in cookiesStr.split("; ")) {
+                    val split = cookie.split("=", limit = 2)
+                    if (split.size == 2) {
+                        connection.cookie(split[0].trim(), split[1].trim())
+                    }
+                }
+            }
+
+            val document = connection.get()
             val html = document.html()
             
             // 1. Ekstrak M3U8 URL (Biasanya dari variabel JS atau tag source)
@@ -59,21 +91,36 @@ object MediaResolver {
     }
 
     private fun extractM3u8Url(html: String): String? {
+        android.util.Log.d("MediaResolver", "Extracting m3u8 from html length: ${html.length}")
+        
         // RegEx ini mencoba mencari URL berakhiran .m3u8
-        // Pola ini mungkin perlu disesuaikan dengan player spesifik (misal Fembed/JWPlayer)
         val m3u8Pattern = Pattern.compile("(https?:\\\\/\\\\/[^\"]+\\\\.m3u8[^\"]*)")
         val matcher = m3u8Pattern.matcher(html)
         if (matcher.find()) {
-            return matcher.group(1)?.replace("\\/", "/")
+            val url = matcher.group(1)?.replace("\\/", "/")
+            android.util.Log.d("MediaResolver", "Found m3u8 via direct regex: $url")
+            return url
         }
         
-        // Pencarian alternatif: mencari 'file: "http...' jika dikemas dalam object
+        // Pencarian alternatif: mencari 'file: "http...'
         val filePattern = Pattern.compile("file\\s*:\\s*[\"'](https?://[^\"]+\\.m3u8[^\"]*)[\"']")
         val fileMatcher = filePattern.matcher(html)
         if (fileMatcher.find()) {
-             return fileMatcher.group(1)
+            val url = fileMatcher.group(1)
+            android.util.Log.d("MediaResolver", "Found m3u8 via file: pattern: $url")
+            return url
         }
         
+        // Coba cari ekstensi .mp4
+        val mp4Pattern = Pattern.compile("(https?:\\\\/\\\\/[^\"]+\\\\.mp4[^\"]*)")
+        val mp4Matcher = mp4Pattern.matcher(html)
+        if (mp4Matcher.find()) {
+            val url = mp4Matcher.group(1)?.replace("\\/", "/")
+            android.util.Log.d("MediaResolver", "Found mp4 fallback: $url")
+            return url
+        }
+        
+        android.util.Log.d("MediaResolver", "No m3u8/mp4 found in HTML")
         return null
     }
 
